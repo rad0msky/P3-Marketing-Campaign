@@ -1,0 +1,1183 @@
+---
+title: "Project 3 - Retail Marketing"
+output: html_notebook
+---
+
+```{r, warning=FALSE, message=FALSE}
+library(tidyverse)
+library(tidymodels)
+library(janitor)
+library(skimr)
+library(kableExtra)
+library(GGally)
+library(vip)
+library(fastshap)
+library(ISLR)
+library(tree)
+library(dplyr)
+library(ggplot2)
+library(factoextra)
+library(imputeMissings)
+library(corrplot)
+library(C50)
+library(rpart.plot)
+library(viridis)
+library(hrbrthemes)
+library(MASS)
+```
+
+
+```{r, warning=FALSE, message=FALSE}
+campaign1 <- read_csv("marketing_campaign.csv") %>% clean_names() 
+customers <- read_csv("new_customers_mkt.csv") %>% clean_names()
+
+
+campaign = subset(campaign1, select= -c(dt_customer, id, z_cost, z_rev))
+head(campaign)
+```
+
+
+```{r, warning=FALSE, message=FALSE}
+campaign$response <- as.factor(campaign$response)
+
+campaign %>%
+  skim()
+```
+
+
+```{r, warning=FALSE, message=FALSE}
+#Exploratory Analysis
+
+#Correlations
+cor1 <- campaign %>%
+  select_if(is.numeric) %>%
+  drop_na() %>%
+  cor()
+  corrplot(cor1, method = 'color', order = 'alphabet')
+
+#Demographics 
+
+#Count of Kids
+campaign1 %>%
+  ggplot(aes(x=kids)) +
+  geom_histogram(stat="count") +
+  labs(title = "Kids")
+
+campaign1 %>%
+  group_by(kids) %>%
+  summarize(n=n()) %>%
+  ungroup() %>%
+  mutate(pct = n/sum(n))
+
+#Count of Education
+campaign1 %>%
+  ggplot(aes(x=education)) +
+  geom_histogram(stat="count") +
+  labs(title = "Education")
+
+campaign1 %>%
+  group_by(education) %>%
+  summarize(n=n()) %>%
+  ungroup() %>%
+  mutate(pct = n/sum(n))
+
+#Count of Marital Status
+campaign1 %>%
+  ggplot(aes(x=mar_stat)) +
+  geom_histogram(stat="count") +
+  labs(title = "Marital Status")
+
+campaign1 %>%
+  group_by(mar_stat) %>%
+  summarize(n=n()) %>%
+  ungroup() %>%
+  mutate(pct = n/sum(n))
+
+
+#Count of Teens
+campaign1 %>%
+  ggplot(aes(x=teens)) +
+  geom_histogram(stat="count") +
+  labs(title = "Teens")
+
+campaign1 %>%
+  group_by(teens) %>%
+  summarize(n=n()) %>%
+  ungroup() %>%
+  mutate(pct = n/sum(n))
+
+#Count of Complaints
+campaign1 %>%
+  ggplot(aes(x=cmplain)) +
+  geom_histogram(stat="count") +
+  labs(title = "Complaints")
+
+campaign1 %>%
+  group_by(cmplain) %>%
+  summarize(n=n()) %>%
+  ungroup() %>%
+  mutate(pct = n/sum(n))
+
+#Count of Birth Years 
+campaign1 %>%
+  ggplot(aes(x=birth)) +
+  geom_histogram(stat="count") +
+  labs(title = "Count of Birth Years")
+
+campaign1 %>%
+  group_by(birth) %>%
+  summarize(n=n()) %>%
+  ungroup() %>%
+  mutate(pct = n/sum(n))
+
+#Count of # of Days Since Purchase
+campaign1 %>%
+  ggplot(aes(x=recency)) +
+  geom_histogram(stat="count") +
+  labs(title = "# of Days Since Purchase")
+
+campaign1 %>%
+  group_by(recency) %>%
+  summarize(n=n()) %>%
+  ungroup() %>%
+  mutate(pct = n/sum(n))
+
+#Amount Spent on Product 
+
+#Amount Spent on Wine In The Last Two Years
+campaign1 %>%
+  ggplot(aes(x=wines)) +
+  geom_histogram(stat="count") +
+  labs(title = "Amount Spent on Wine In The Last Two Years")
+
+campaign1 %>%
+  group_by(wines) %>%
+  summarize(n=n()) %>%
+  ungroup() %>%
+  mutate(pct = n/sum(n))
+
+#Amount Spent on Fruits In The Last Two Years
+campaign1 %>%
+  ggplot(aes(x=fruits)) +
+  geom_histogram(stat="count") +
+  labs(title = "Amount Spent on Fruits")
+
+campaign1 %>%
+  group_by(fruits) %>%
+  summarize(n=n()) %>%
+  ungroup() %>%
+  mutate(pct = n/sum(n))
+
+#Amount Spent on Meats In The Last Two Years
+campaign1 %>%
+  ggplot(aes(x=meat)) +
+  geom_histogram(stat="count") +
+  labs(title = "Amount Spent on Meats In The Last Two Years")
+
+campaign1 %>%
+  group_by(meat) %>%
+  summarize(n=n()) %>%
+  ungroup() %>%
+  mutate(pct = n/sum(n))
+
+#Amount Spent on Fish In The Last Two Years
+campaign1 %>%
+  ggplot(aes(x=fish)) +
+  geom_histogram(stat="count") +
+  labs(title = "Amount Spent on Fish In The Last Two Years")
+
+campaign1 %>%
+  group_by(fish) %>%
+  summarize(n=n()) %>%
+  ungroup() %>%
+  mutate(pct = n/sum(n))
+
+#Amount Spent on Sweets In The Last Two Years
+campaign1 %>%
+  ggplot(aes(x=sweets)) +
+  geom_histogram(stat="count") +
+  labs(title = "Amount Spent on Sweets In The Last Two Years")
+
+campaign1 %>%
+  group_by(sweets) %>%
+  summarize(n=n()) %>%
+  ungroup() %>%
+  mutate(pct = n/sum(n))
+
+#Amount Spent on Gold In The Last Two Years
+campaign1 %>%
+  ggplot(aes(x=gold)) +
+  geom_histogram(stat="count") +
+  labs(title = "Amount Spent on Gold In The Last Two Years")
+
+campaign1 %>%
+  group_by(gold) %>%
+  summarize(n=n()) %>%
+  ungroup() %>%
+  mutate(pct = n/sum(n))
+
+#Responsiveness to Previous Promotions
+
+#Number of purchases made with a discount
+campaign1 %>%
+  ggplot(aes(x=deals)) +
+  geom_histogram(stat="count") +
+  labs(title = "Number of purchases made with a discount")
+
+campaign1 %>%
+  group_by(deals) %>%
+  summarize(n=n()) %>%
+  ungroup() %>%
+  mutate(pct = n/sum(n))
+
+#Number of customers accepting offer in the 1st campaign 
+campaign1 %>%
+  ggplot(aes(x=cmp1)) +
+  geom_histogram(stat="count") +
+  labs(title = "Number of customers accepting offer in the 1st campaign")
+
+campaign1 %>%
+  group_by(cmp1) %>%
+  summarize(n=n()) %>%
+  ungroup() %>%
+  mutate(pct = n/sum(n))
+
+#Number of customers accepting offer in the 2nd campaign 
+campaign1 %>%
+  ggplot(aes(x=cmp2)) +
+  geom_histogram(stat="count") +
+  labs(title = "Number of customers accepting offer in the 2nd campaign")
+
+campaign1 %>%
+  group_by(cmp2) %>%
+  summarize(n=n()) %>%
+  ungroup() %>%
+  mutate(pct = n/sum(n))
+
+#Number of customers accepting offer in the 3rd campaign 
+campaign1 %>%
+  ggplot(aes(x=cmp3)) +
+  geom_histogram(stat="count") +
+  labs(title = "Number of customers accepting offer in the 3rd campaign")
+
+campaign1 %>%
+  group_by(cmp3) %>%
+  summarize(n=n()) %>%
+  ungroup() %>%
+  mutate(pct = n/sum(n))
+
+#Number of customers accepting offer in the 4th campaign 
+campaign1 %>%
+  ggplot(aes(x=cmp4)) +
+  geom_histogram(stat="count") +
+  labs(title = "Number of customers accepting offer in the 4th campaign")
+
+campaign1 %>%
+  group_by(cmp4) %>%
+  summarize(n=n()) %>%
+  ungroup() %>%
+  mutate(pct = n/sum(n))
+
+#Number of customers accepting offer in the 5th campaign 
+campaign1 %>%
+  ggplot(aes(x=cmp5)) +
+  geom_histogram(stat="count") +
+  labs(title = "Number of customers accepting offer in the 5th campaign")
+
+campaign1 %>%
+  group_by(cmp5) %>%
+  summarize(n=n()) %>%
+  ungroup() %>%
+  mutate(pct = n/sum(n))
+
+#Number of customers accepting offer in the last campaign 
+campaign1 %>%
+  ggplot(aes(x=response)) +
+  geom_histogram(stat="count") +
+  labs(title = "Number of customers accepting offer in the last campaign")
+
+campaign1 %>%
+  group_by(response) %>%
+  summarize(n=n()) %>%
+  ungroup() %>%
+  mutate(pct = n/sum(n))
+
+#Purchases Channel
+
+#Number of purchases made through the company’s web site
+campaign1 %>%
+  ggplot(aes(x=web)) +
+  geom_histogram(stat="count") +
+  labs(title = "Number of purchases made through the company’s web site")
+
+campaign1 %>%
+  group_by(web) %>%
+  summarize(n=n()) %>%
+  ungroup() %>%
+  mutate(pct = n/sum(n))
+
+#Number of purchases made using a catalog
+campaign1 %>%
+  ggplot(aes(x=catalog)) +
+  geom_histogram(stat="count") +
+  labs(title = "Number of purchases made through the company’s catalog")
+
+campaign1 %>%
+  group_by(catalog) %>%
+  summarize(n=n()) %>%
+  ungroup() %>%
+  mutate(pct = n/sum(n))
+
+#Number of purchases made in stores
+campaign1 %>%
+  ggplot(aes(x=store)) +
+  geom_histogram(stat="count") +
+  labs(title = "Number of purchases made in stores")
+
+campaign1 %>%
+  group_by(store) %>%
+  summarize(n=n()) %>%
+  ungroup() %>%
+  mutate(pct = n/sum(n))
+
+#Number of visits to company’s web site in the last month
+campaign1 %>%
+  ggplot(aes(x=visits)) +
+  geom_histogram(stat="count") +
+  labs(title = "Number of visits to company’s web site in the last month")
+
+campaign1 %>%
+  group_by(visits) %>%
+  summarize(n=n()) %>%
+  ungroup() %>%
+  mutate(pct = n/sum(n))
+
+#Demographics Continued 
+
+campaign1$response <- as.factor(campaign1$response)
+
+#Income Vs Response
+ggplot(campaign1, aes(x=response, y=income)) +
+  geom_boxplot()  +
+  scale_fill_viridis(discrete = TRUE, alpha=0.6) +
+  geom_jitter(color="black", size=0.4, alpha=0.9) +
+  theme_ipsum() +
+  theme(
+  legend.position="none",
+  plot.title = element_text(size=11)
+  ) +
+  ggtitle("Income Vs Response") +
+  xlab("Response")
+
+#Education Vs Response
+ggplot(campaign1, aes(x=education, y=response)) +
+  geom_boxplot()  +
+  scale_fill_viridis(discrete = TRUE, alpha=0.6) +
+  geom_jitter(color="black", size=0.4, alpha=0.9) +
+  theme_ipsum() +
+  theme(
+  legend.position="none",
+  plot.title = element_text(size=11)
+  ) +
+  ggtitle("Education Vs Response") +
+  xlab("Education")
+
+#Marital Status Vs Response 
+ggplot(campaign1, aes(x=mar_stat, y=response)) +
+  geom_boxplot()  +
+  scale_fill_viridis(discrete = TRUE, alpha=0.6) +
+  geom_jitter(color="black", size=0.4, alpha=0.9) +
+  theme_ipsum() +
+  theme(
+  legend.position="none",
+  plot.title = element_text(size=11)
+  ) +
+  ggtitle("Marital Status Vs Response") +
+  xlab("Marital Stauts")
+
+#Amount Spent on Product Continued
+
+#Amount Spent on Wine Vs Response 
+ggplot(campaign1, aes(x=wines, y=response)) +
+  geom_boxplot()  +
+  scale_fill_viridis(discrete = TRUE, alpha=0.6) +
+  geom_jitter(color="black", size=0.4, alpha=0.9) +
+  theme_ipsum() +
+  theme(
+  legend.position="none",
+  plot.title = element_text(size=11)
+  ) +
+  ggtitle("Amount Spent on Wine In The Last Two Years Vs Response") +
+  xlab("$ Spent on Wine")
+
+#Amount Spent on Fruits Vs Response 
+ggplot(campaign1, aes(x=wines, y=response)) +
+  geom_boxplot()  +
+  scale_fill_viridis(discrete = TRUE, alpha=0.6) +
+  geom_jitter(color="black", size=0.4, alpha=0.9) +
+  theme_ipsum() +
+  theme(
+  legend.position="none",
+  plot.title = element_text(size=11)
+  ) +
+  ggtitle("Amount Spent on Fruits In The Last Two Years Vs Response") +
+  xlab("$ Spent on Fruits")
+
+#Amount Spent on Meats Vs Response 
+ggplot(campaign1, aes(x=meat, y=response)) +
+  geom_boxplot()  +
+  scale_fill_viridis(discrete = TRUE, alpha=0.6) +
+  geom_jitter(color="black", size=0.4, alpha=0.9) +
+  theme_ipsum() +
+  theme(
+  legend.position="none",
+  plot.title = element_text(size=11)
+  ) +
+  ggtitle("Amount Spent on Meats In The Last Two Years Vs Response") +
+  xlab("$ Spent on Meats")
+
+#Amount Spent on fish Vs Response 
+ggplot(campaign1, aes(x=fish, y=response)) +
+  geom_boxplot()  +
+  scale_fill_viridis(discrete = TRUE, alpha=0.6) +
+  geom_jitter(color="black", size=0.4, alpha=0.9) +
+  theme_ipsum() +
+  theme(
+  legend.position="none",
+  plot.title = element_text(size=11)
+  ) +
+  ggtitle("Amount Spent on Fish In The Last Two Years Vs Response") +
+  xlab("$ Spent on Fish")
+
+#Amount Spent on Sweets Vs Response 
+ggplot(campaign1, aes(x=sweets, y=response)) +
+  geom_boxplot()  +
+  scale_fill_viridis(discrete = TRUE, alpha=0.6) +
+  geom_jitter(color="black", size=0.4, alpha=0.9) +
+  theme_ipsum() +
+  theme(
+  legend.position="none",
+  plot.title = element_text(size=11)
+  ) +
+  ggtitle("Amount Spent on Sweets In The Last Two Years Vs Response") +
+  xlab("$ Spent on Sweets")
+
+#Amount Spent on Gold Vs Response 
+ggplot(campaign1, aes(x=gold, y=response)) +
+  geom_boxplot()  +
+  scale_fill_viridis(discrete = TRUE, alpha=0.6) +
+  geom_jitter(color="black", size=0.4, alpha=0.9) +
+  theme_ipsum() +
+  theme(
+  legend.position="none",
+  plot.title = element_text(size=11)
+  ) +
+  ggtitle("Amount Spent on Gold In The Last Two Years Vs Response") +
+  xlab("$ Spent on Gold")
+
+#Responsiveness to Previous Promotions Continued
+
+#Number of purchases made with a discount Vs Response 
+ggplot(campaign1, aes(x=deals, y=response)) +
+  geom_boxplot()  +
+  scale_fill_viridis(discrete = TRUE, alpha=0.6) +
+  geom_jitter(color="black", size=0.4, alpha=0.9) +
+  theme_ipsum() +
+  theme(
+  legend.position="none",
+  plot.title = element_text(size=11)
+  ) +
+  ggtitle("Number of purchases made with a discount Vs Response") +
+  xlab("# of Purchases Made")
+
+
+
+
+
+
+```
+
+
+```{r, warning=FALSE, message=FALSE}
+campaign2 <- impute(campaign)
+
+#age
+choices = c(2022:lubridate::year(Sys.Date()))
+
+campaign2 <- campaign2 %>%
+  mutate(as.integer(birth)) %>%
+  mutate(age = choices - birth)
+
+campaign2 %>% 
+  summarize(mean_age = mean(age))
+
+head(campaign2)
+skimr::skim(campaign2)
+
+#dummy for education 
+campaign2$other <- ifelse(campaign2$education == '2nCycle', 1, 0)
+campaign2$basic <- ifelse(campaign2$education == 'Basic', 1, 0)
+campaign2$grad <- ifelse(campaign2$education == 'Graduation', 1, 0)
+campaign2$master <- ifelse(campaign2$education == 'Master', 1, 0)
+campaign2$phd <- ifelse(campaign2$education == 'PhD', 1, 0)
+
+#dummy for marital status
+campaign2$absurd <- ifelse(campaign2$mar_stat == 'Absurd', 1, 0)
+campaign2$alone <- ifelse(campaign2$mar_stat == 'Alone', 1, 0)
+campaign2$divorce <- ifelse(campaign2$mar_stat == 'Divorce', 1, 0)
+campaign2$married <- ifelse(campaign2$mar_stat == 'Married', 1, 0)
+campaign2$partner <- ifelse(campaign2$mar_stat == 'Partner', 1, 0)
+campaign2$single <- ifelse(campaign2$mar_stat == 'Single', 1, 0)
+campaign2$widow <- ifelse(campaign2$mar_stat == 'Widow', 1, 0)
+campaign2$yolo <- ifelse(campaign2$mar_stat == 'YOLO', 1, 0)
+
+#scale numeric
+campaign2$income <- scale(campaign2$income)
+campaign2$recency <- scale(campaign2$recency)
+campaign2$wines <- scale(campaign2$wines)
+campaign2$fruits <- scale(campaign2$fruits)
+campaign2$meat <- scale(campaign2$meat)
+campaign2$fish <- scale(campaign2$fish)
+campaign2$sweets <- scale(campaign2$sweets)
+campaign2$gold <- scale(campaign2$gold)
+campaign2$deals <- scale(campaign2$deals)
+campaign2$web <- scale(campaign2$web)
+campaign2$catalog <- scale(campaign2$catalog)
+campaign2$store <- scale(campaign2$store)
+campaign2$visits <- scale(campaign2$visits)
+
+
+
+#removed irrelevant variables
+organics = subset(campaign2, select= -c(mar_stat, education, response, birth))
+head(organics)
+```
+
+
+```{r, warning=FALSE, message=FALSE}
+#optimal number of clusters
+fviz_nbclust(organics, kmeans, method="wss")
+```
+
+
+```{r, warning=FALSE, message=FALSE}
+set.seed(2500)
+
+clusters1 <- kmeans(organics, 6, iter.max = 200, nstart = 10)
+print(clusters1)
+
+#clusters visualized
+
+fviz_cluster(clusters1,organics,ellipse.type="norm",geom="point")
+```
+
+
+```{r, warning=FALSE, message=FALSE}
+#Cluster Review
+
+ggplot(organics,aes(clusters1$cluster))+geom_bar()
+
+ggplot(campaign2,aes(x=age))+geom_histogram(binwidth=5)
+ggplot(campaign2,aes(x=age))+geom_histogram(binwidth=5) + facet_wrap(~clusters1$cluster)
+
+ggplot(campaign2,aes(x=recency))+geom_histogram(binwidth=1)
+ggplot(campaign2,aes(x=recency))+geom_histogram(binwidth=1) + facet_wrap(~clusters1$cluster)
+
+ggplot(campaign2,aes(x=wines))+geom_histogram(binwidth=1)
+ggplot(campaign2,aes(x=wines))+geom_histogram(binwidth=1) + facet_wrap(~clusters1$cluster)
+
+ggplot(campaign2,aes(x=fruits))+geom_histogram(binwidth=1)
+ggplot(campaign2,aes(x=fruits))+geom_histogram(binwidth=1) + facet_wrap(~clusters1$cluster)
+
+ggplot(campaign2,aes(x=meat))+geom_histogram(binwidth=10)
+ggplot(campaign2,aes(x=meat))+geom_histogram(binwidth=10) + facet_wrap(~clusters1$cluster)
+
+ggplot(campaign2,aes(x=fish))+geom_histogram(binwidth=10)
+ggplot(campaign2,aes(x=fish))+geom_histogram(binwidth=10) + facet_wrap(~clusters1$cluster)
+
+ggplot(campaign2,aes(x=sweets))+geom_histogram(binwidth=10)
+ggplot(campaign2,aes(x=sweets))+geom_histogram(binwidth=10) + facet_wrap(~clusters1$cluster)
+
+ggplot(campaign2,aes(x=gold))+geom_histogram(binwidth=1)
+ggplot(campaign2,aes(x=gold))+geom_histogram(binwidth=1) + facet_wrap(~clusters1$cluster)
+
+ggplot(campaign2,aes(x=deals))+geom_histogram(binwidth=1)
+ggplot(campaign2,aes(x=deals))+geom_histogram(binwidth=1) + facet_wrap(~clusters1$cluster)
+
+ggplot(campaign2,aes(x=web))+geom_histogram(binwidth=1)
+ggplot(campaign2,aes(x=web))+geom_histogram(binwidth=1) + facet_wrap(~clusters1$cluster)
+
+ggplot(campaign2,aes(x=catalog))+geom_histogram(binwidth=1)
+ggplot(campaign2,aes(x=catalog))+geom_histogram(binwidth=1) + facet_wrap(~clusters1$cluster)
+
+ggplot(campaign2,aes(x=store))+geom_histogram(binwidth=1)
+ggplot(campaign2,aes(x=store))+geom_histogram(binwidth=1) + facet_wrap(~clusters1$cluster)
+
+ggplot(campaign2,aes(x=visits))+geom_histogram(binwidth=1)
+ggplot(campaign2,aes(x=visits))+geom_histogram(binwidth=1) + facet_wrap(~clusters1$cluster)
+
+ggplot(campaign2,aes(x=cmp1))+geom_histogram(binwidth=1)
+ggplot(campaign2,aes(x=cmp1))+geom_histogram(binwidth=1) + facet_wrap(~clusters1$cluster)
+
+ggplot(campaign2,aes(x=cmp2))+geom_histogram(binwidth=1)
+ggplot(campaign2,aes(x=cmp2))+geom_histogram(binwidth=1) + facet_wrap(~clusters1$cluster)
+
+ggplot(campaign2,aes(x=cmp3))+geom_histogram(binwidth=1)
+ggplot(campaign2,aes(x=cmp3))+geom_histogram(binwidth=1) + facet_wrap(~clusters1$cluster)
+
+ggplot(campaign2,aes(x=cmp4))+geom_histogram(binwidth=1)
+ggplot(campaign2,aes(x=cmp4))+geom_histogram(binwidth=1) + facet_wrap(~clusters1$cluster)
+
+ggplot(campaign2,aes(x=cmp5))+geom_histogram(binwidth=1)
+ggplot(campaign2,aes(x=cmp5))+geom_histogram(binwidth=1) + facet_wrap(~clusters1$cluster)
+
+ggplot(campaign2,aes(x=cmplain))+geom_histogram(binwidth=1)
+ggplot(campaign2,aes(x=cmplain))+geom_histogram(binwidth=1) + facet_wrap(~clusters1$cluster)
+
+ggplot(campaign2,aes(x=other))+geom_histogram(binwidth=1)
+ggplot(campaign2,aes(x=other))+geom_histogram(binwidth=1) + facet_wrap(~clusters1$cluster)
+
+ggplot(campaign2,aes(x=basic))+geom_histogram(binwidth=1)
+ggplot(campaign2,aes(x=basic))+geom_histogram(binwidth=1) + facet_wrap(~clusters1$cluster)
+
+ggplot(campaign2,aes(x=grad))+geom_histogram(binwidth=1)
+ggplot(campaign2,aes(x=grad))+geom_histogram(binwidth=1) + facet_wrap(~clusters1$cluster)
+
+ggplot(campaign2,aes(x=master))+geom_histogram(binwidth=1)
+ggplot(campaign2,aes(x=master))+geom_histogram(binwidth=1) + facet_wrap(~clusters1$cluster)
+
+ggplot(campaign2,aes(x=phd))+geom_histogram(binwidth=1)
+ggplot(campaign2,aes(x=phd))+geom_histogram(binwidth=1) + facet_wrap(~clusters1$cluster)
+
+ggplot(campaign2,aes(x=absurd))+geom_histogram(binwidth=1)
+ggplot(campaign2,aes(x=absurd))+geom_histogram(binwidth=1) + facet_wrap(~clusters1$cluster)
+
+ggplot(campaign2,aes(x=alone))+geom_histogram(binwidth=1)
+ggplot(campaign2,aes(x=alone))+geom_histogram(binwidth=1) + facet_wrap(~clusters1$cluster)
+
+ggplot(campaign2,aes(x=divorce))+geom_histogram(binwidth=1)
+ggplot(campaign2,aes(x=divorce))+geom_histogram(binwidth=1) + facet_wrap(~clusters1$cluster)
+
+ggplot(campaign2,aes(x=married))+geom_histogram(binwidth=1)
+ggplot(campaign2,aes(x=married))+geom_histogram(binwidth=1) + facet_wrap(~clusters1$cluster)
+
+ggplot(campaign2,aes(x=partner))+geom_histogram(binwidth=1)
+ggplot(campaign2,aes(x=partner))+geom_histogram(binwidth=1) + facet_wrap(~clusters1$cluster)
+
+ggplot(campaign2,aes(x=single))+geom_histogram(binwidth=1)
+ggplot(campaign2,aes(x=single))+geom_histogram(binwidth=1) + facet_wrap(~clusters1$cluster)
+
+ggplot(campaign2,aes(x=widow))+geom_histogram(binwidth=1)
+ggplot(campaign2,aes(x=widow))+geom_histogram(binwidth=1) + facet_wrap(~clusters1$cluster)
+
+ggplot(campaign2,aes(x=yolo))+geom_histogram(binwidth=1)
+ggplot(campaign2,aes(x=yolo))+geom_histogram(binwidth=1) + facet_wrap(~clusters1$cluster)
+
+ggplot(campaign2,aes(x=kids))+geom_histogram(binwidth=1)
+ggplot(campaign2,aes(x=kids))+geom_histogram(binwidth=1) + facet_wrap(~clusters1$cluster)
+
+ggplot(campaign2,aes(x=teens))+geom_histogram(binwidth=1)
+ggplot(campaign2,aes(x=teens))+geom_histogram(binwidth=1) + facet_wrap(~clusters1$cluster)
+
+ggplot(campaign2,aes(x=income))+geom_histogram(binwidth=.5)
+ggplot(campaign2,aes(x=income))+geom_histogram(binwidth=.5) + facet_wrap(~clusters1$cluster)
+
+ggplot(campaign2,aes(response))+geom_bar()
+ggplot(campaign2,aes(response))+geom_bar() + facet_wrap(~clusters1$cluster)
+
+ggplot(campaign2,aes(mar_stat))+geom_bar()
+ggplot(campaign2,aes(mar_stat))+geom_bar() + facet_wrap(~clusters1$cluster)
+
+ggplot(campaign2,aes(education))+geom_bar()
+ggplot(campaign2,aes(education))+geom_bar() + facet_wrap(~clusters1$cluster)
+
+campaign2 %>% 
+  group_by(clusters1$cluster) %>% 
+  summarize(mean_age = mean(age),
+            min_age = min(age),
+            max_age = max(age),
+            mean_income = mean(income),
+            min_income = min(income),
+            max_income = max(income),
+            mean_wine = mean(wines),
+            min_wine = min(wines),
+            max_wine = max(wines),
+            mean_fruits = mean(fruits),
+            min_fruits = min(fruits),
+            max_fruits = max(fruits),
+            mean_meat = mean(meat),
+            min_meat = min(meat),
+            max_meat = max(meat),
+            mean_fish = mean(fish),
+            min_fish = min(fish),
+            max_fish = max(fish),
+            mean_sweets = mean(sweets),
+            min_sweets = min(sweets),
+            max_sweets = max(sweets),
+            mean_gold = mean(gold),
+            min_gold = min(gold),
+            max_gold = max(gold)
+            )
+```
+
+
+```{r, warning=FALSE, message=FALSE}
+campaign2$cluster <- clusters1$cluster
+
+organic_cluster = subset(campaign2, select= -c(mar_stat, education, birth))
+
+organic_cluster$cluster <- as.factor(organic_cluster$cluster)
+
+organic_cluster %>%
+  skim()
+```
+
+
+```{r, warning=FALSE, message=FALSE}
+set.seed(19)
+
+
+oc_split <- initial_split(organic_cluster, prop = 0.7)
+
+
+oc_train <- training(oc_split)
+
+oc_test <- testing(oc_split)
+
+sprintf("Train PCT : %1.2f%%", nrow(oc_train)/ nrow(organic_cluster) * 100)
+sprintf("Test  PCT : %1.2f%%", nrow(oc_test)/ nrow(organic_cluster) * 100)
+
+head(oc_train)
+```
+
+
+```{r, warning=FALSE, message=FALSE}
+oc_recipe <- recipe(response ~ ., data = oc_train) %>%
+  step_rm(cluster)%>%
+  step_dummy(all_nominal(), -all_outcomes()) %>%
+    prep()
+
+oc_recipe
+
+
+bake_train <- bake(oc_recipe, new_data = oc_train)
+bake_test  <- bake(oc_recipe, new_data = oc_test)
+```
+
+
+```{r, warning=FALSE, message=FALSE}
+oc_tree <- decision_tree(mode="classification",
+                           cost_complexity = 0.001,
+                           tree_depth=6) %>%
+                  set_engine("rpart") %>%
+                  fit(response ~ ., data = bake_train)
+
+
+oc_tree$fit
+
+options(scipen=0)
+rpart.plot(oc_tree$fit, roundint=FALSE, extra = 3)
+
+#Variable Importance top 10 features  
+oc_tree %>%
+  vip(num_features = 5)
+```
+
+
+```{r, warning=FALSE, message=FALSE}
+#training 
+predict(oc_tree, bake_train, type = "prob") %>%
+  bind_cols(.,predict(oc_tree, bake_train)) %>%
+  bind_cols(.,bake_train) -> scored_train_tree
+
+head(scored_train_tree)
+
+#testing 
+predict(oc_tree, bake_test, type = "prob") %>%
+  bind_cols(.,predict(oc_tree, bake_test)) %>%
+  bind_cols(.,bake_test) -> scored_test_tree
+
+head(scored_test_tree)
+```
+
+
+```{r, warning=FALSE, message=FALSE}
+options(yardstick.event_first = FALSE)
+
+
+#AUC: Train and Test 
+scored_train_tree %>% 
+  metrics(response, .pred_1, estimate = .pred_class) %>%
+  mutate(part="training") %>%
+  bind_rows( scored_test_tree %>% 
+               metrics(response, .pred_1, estimate = .pred_class) %>%
+               mutate(part="testing") 
+  ) 
+  
+
+#ROC Charts 
+scored_train_tree %>%
+  mutate(model = "train") %>%
+  bind_rows(scored_test_tree %>%
+              mutate(model="test")) %>%
+  group_by(model) %>%
+  roc_curve(response, .pred_1) %>%
+  autoplot()
+
+
+#Confusion Matricies  
+scored_train_tree %>%
+  conf_mat(response, .pred_class) %>%
+  autoplot( type = "heatmap") +
+  labs(title="Train Confusion Matrix")
+
+scored_test_tree %>%
+  conf_mat(response, .pred_class) %>%
+  autoplot( type = "heatmap") +
+  labs(title="Test Confusion Matrix")
+
+```
+
+
+
+```{r, warning=FALSE, message=FALSE}
+#initial logistic regression to access 
+
+campaign%>%
+dplyr::select(response, education, mar_stat, birth, income, kids, teens, recency, wines, fruits, meat, fish, sweets, gold, deals, web, catalog, store, visits, cmp1, cmp2, cmp3, cmp4, cmp5, cmplain) -> campaign_valid
+
+
+campaign_split <- initial_split(campaign_valid, prop = 0.7)
+
+#Training data 
+campaign_train <- training(campaign_split)
+#Test data 
+campaign_test <- testing(campaign_split)
+
+
+kfold_splits <- vfold_cv(campaign_train, v=5)
+
+sprintf("Train PCT : %1.2f%%", nrow(campaign_train)/ nrow(campaign) * 100)
+```
+
+
+```{r, warning=FALSE, message=FALSE}
+campaign_recipe <- recipe(response ~ ., data = campaign_train) %>% 
+    step_impute_median(all_numeric()) %>%
+    prep()
+campaign_recipe
+```
+
+
+```{r, warning=FALSE, message=FALSE}
+campaign_train <- bake(campaign_recipe, new_data = campaign_train)
+campaign_test  <- bake(campaign_recipe, new_data = campaign_test)
+```
+
+
+```{r, warning=FALSE, message=FALSE}
+logistic_glm <-logistic_reg(mode = "classification") %>%
+                  set_engine("glm") %>%
+                  fit(response ~ ., data = campaign_train)
+
+
+# Parameter Estimates
+tidy(logistic_glm) %>%
+  mutate_at(c("estimate", "std.error", "statistic", "p.value"),round, 4)
+```
+
+
+```{r, warning=FALSE, message=FALSE}
+predict(logistic_glm, campaign_train, type = "prob") %>%
+  bind_cols(.,predict(logistic_glm, campaign_train)) %>%
+  bind_cols(.,campaign_train) -> scored_train_glm
+
+head(scored_train_glm)
+```
+
+
+```{r, warning=FALSE, message=FALSE}
+predict(logistic_glm, campaign_test, type = "prob") %>%
+  bind_cols(.,predict(logistic_glm, campaign_test)) %>%
+  bind_cols(.,campaign_test) -> scored_test_glm
+  head(scored_test_glm)
+```
+
+
+```{r, warning=FALSE, message=FALSE}
+options(yardstick.event_first = FALSE)
+
+scored_train_glm %>% 
+  metrics(response, .pred_1, estimate = .pred_class) %>%
+  mutate(part="Training") %>%
+  bind_rows(scored_test_glm %>% 
+  metrics(response, .pred_1, estimate = .pred_class) %>%
+  mutate(part="Testing"))
+```
+
+
+```{r, warning=FALSE, message=FALSE}
+logistic_glm %>%
+  vip(num_features = 10)
+```
+
+
+```{r, warning=FALSE, message=FALSE}
+scored_train_glm %>%
+  mutate(model = "Train") %>%
+  bind_rows(scored_test_glm %>%
+  mutate(model="test")) %>%
+  group_by(model) %>% 
+  roc_curve(response, .pred_1) %>% 
+  autoplot()
+```
+
+
+```{r, warning=FALSE, message=FALSE}
+scored_train_glm %>%
+  conf_mat(response, .pred_class) %>% #actual target, predicted class
+  autoplot( type = "heatmap") +
+  labs(title="Train Confusion Matrix")
+
+scored_test_glm %>%
+  conf_mat(response, .pred_class) %>%
+  autoplot( type = "heatmap") +
+  labs(title="Test Confusion Matrix")
+```
+
+
+```{r, warning=FALSE, message=FALSE}
+#slim initial logistic utilizing step_aic
+
+steplog <- glm(response ~ ., data = campaign_train, family=binomial(link="logit"))
+step <- stepAIC(steplog, direction="both")
+summary(step)
+```
+
+
+```{r, warning=FALSE, message=FALSE}
+#logistic regression based on step_aic results
+
+campaign_steprecipe <- recipe(response ~ teens + recency + meat + web + catalog + store + visits + cmp1 + cmp2 + cmp3 + cmp4 + cmp5 + deals + education, data = campaign_train) %>%
+    step_impute_median(all_numeric()) %>%
+    prep()
+
+```
+
+
+```{r, warning=FALSE, message=FALSE}
+bake_steptrain <- bake(campaign_steprecipe, new_data = campaign_train)
+bake_steptest  <- bake(campaign_steprecipe, new_data = campaign_test)
+
+logistic_step1 <-logistic_reg(mode = "classification") %>%
+                  set_engine("glm") %>%
+                  fit(response ~ ., data = bake_steptrain)
+
+
+tidy(logistic_step1) %>%
+  mutate_at(c("estimate", "std.error", "statistic", "p.value"),round, 4)
+```
+
+
+```{r, warning=FALSE, message=FALSE}
+predict(logistic_step1, campaign_train, type = "prob") %>%
+  bind_cols(.,predict(logistic_step1, campaign_train)) %>%
+  bind_cols(.,campaign_train) -> scored_train_step1
+
+head(scored_train_step1)
+
+predict(logistic_step1, campaign_test, type = "prob") %>%
+  bind_cols(.,predict(logistic_step1, campaign_test)) %>%
+  bind_cols(.,campaign_test) -> scored_test_step1
+
+head(scored_test_step1)
+```
+
+
+```{r, warning=FALSE, message=FALSE}
+#new logistic regression metrics 
+
+options(yardstick.event_first = FALSE)
+
+scored_train_step1 %>% 
+  metrics(response, .pred_1, estimate = .pred_class) %>%
+  mutate(part="Training") %>%
+  bind_rows(scored_test_glm %>% 
+  metrics(response, .pred_1, estimate = .pred_class) %>%
+  mutate(part="Testing"))
+```
+
+
+```{r, warning=FALSE, message=FALSE}
+#new logistic regression model importance
+
+logistic_step1 %>%
+  vip(num_features = 10)
+```
+
+
+```{r, warning=FALSE, message=FALSE}
+#new logistic regression roc
+
+scored_train_step1 %>%
+  mutate(model = "train") %>%
+  bind_rows(scored_test_step1 %>%
+  mutate(model="test")) %>%
+  group_by(model) %>%
+  roc_curve(response, .pred_1) %>%
+  autoplot()
+```
+
+
+```{r, warning=FALSE, message=FALSE}
+#new logistic regression training/test confusion matrix **** FINAL Model due to best metrics, specicifically test accuracy/kap, compared to initial logistic and rf
+
+scored_train_step1 %>%
+  conf_mat(response, .pred_class) %>%
+  autoplot( type = "heatmap") +
+  labs(title="Train Confusion Matrix")
+
+scored_test_step1 %>%
+  conf_mat(response, .pred_class) %>%
+  autoplot( type = "heatmap") +
+  labs(title="Test Confusion Matrix")
+```
+
+
+```{r, warning=FALSE, message=FALSE}
+#rf recipe
+
+rf_recipe <- recipe(response ~ teens + recency + meat + web + catalog + store + visits + cmp1 + cmp2 + cmp3 + cmp4 + cmp5 + deals + education, data = campaign_train) %>% 
+  step_impute_median(all_numeric_predictors()) %>%
+  step_unknown(all_nominal_predictors()) %>%        
+  step_other(all_nominal_predictors(),threshold = 0.1) %>%  
+  step_dummy(all_nominal_predictors(), one_hot = TRUE) %>%
+  prep()
+```
+
+
+```{r, warning=FALSE, message=FALSE}
+#rf tune and grid search 
+
+rf_model <- rand_forest(trees=tune(), min_n=tune()) %>%
+  set_engine("ranger",importance="permutation") %>%
+  set_mode("classification")
+
+
+rf_wflow <-workflow() %>%
+  add_recipe(rf_recipe) %>%
+  add_model(rf_model)
+
+rf_grid <- grid_regular(trees(c(25,1000)), min_n(c(5,10)), levels = 4)
+
+doParallel::registerDoParallel()
+rf_grid_search <-
+  tune_grid(
+    rf_wflow,
+    resamples = kfold_splits,
+    metrics = metric_set(accuracy,kap,roc_auc),
+    grid = rf_grid
+    )
+```
+
+
+```{r, warning=FALSE, message=FALSE}
+#metric search / collection 
+
+rf_grid_search %>%
+  collect_metrics()  %>% 
+  filter(.metric == "accuracy")
+
+rf_grid_search %>%
+  collect_metrics()  %>% 
+  filter(.metric == "kap")
+
+rf_grid_search %>%
+  collect_metrics()  %>% 
+  filter(.metric == "roc_auc")
+
+
+rf_grid_search %>%
+  collect_metrics() %>%
+  ggplot(aes(min_n, mean, color = .metric)) +
+  geom_errorbar(aes(
+    ymin = mean - std_err,
+    ymax = mean + std_err
+  ),
+  alpha = 0.5
+  ) +
+  geom_line(size = 1.5) +
+  facet_wrap(~.metric, scales = "free", nrow = 2) +
+  scale_x_log10() +
+  theme(legend.position = "none")
+```
+
+
+```{r, warning=FALSE, message=FALSE}
+#Number of trees vs metrics
+
+rf_grid_search %>%
+  collect_metrics() %>%
+  ggplot(aes(trees, mean, color = .metric)) +
+  geom_errorbar(aes(
+    ymin = mean - std_err,
+    ymax = mean + std_err
+  ),
+  alpha = 0.5
+  ) +
+  geom_line(size = 1.5) +
+  facet_wrap(~.metric, scales = "free", nrow = 2) +
+  scale_x_log10() +
+  theme(legend.position = "none")
+```
+
+
+```{r, warning=FALSE, message=FALSE}
+#metric search
+
+best_rf_accuracy <- rf_grid_search %>%
+  select_best("accuracy")
+
+best_rf_kap <- rf_grid_search %>%
+  select_best("kap")
+
+best_rf_roc <- rf_grid_search %>%
+  select_best("roc_auc")
+
+rf_final <- finalize_workflow(
+  rf_wflow, best_rf_accuracy
+  ) %>% 
+  fit(campaign_train)
+```
+
+
+```{r, warning=FALSE, message=FALSE}
+#rf model importance
+
+rf_final  %>% pull_workflow_fit() %>%
+vip()
+```
+
+
+```{r, warning=FALSE, message=FALSE}
+#rf metric eval
+
+bind_cols(
+  predict(rf_final,campaign_train), campaign_train) %>% 
+  metrics(response,.pred_class)
+
+bind_cols(
+  predict(rf_final,campaign_test), campaign_test) %>% 
+  metrics(response,.pred_class)
+```
+
+
+```{r, warning=FALSE, message=FALSE}
+#predictions on customers
+
+bind_cols(predict(logistic_step1,customers),customers) %>% write_csv("jlr_scored.csv")
+
+
+```
+
+
